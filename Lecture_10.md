@@ -9,6 +9,9 @@ void foo(int bar, int *baz)
 {
     char snink[4];
     short* why;
+    
+    why = (short*)(snink + 2);
+    *why = 50;
 }
 ```
 ![qownnotes-media-JnlPZk](media/qownnotes-media-JnlPZk.png)
@@ -50,4 +53,52 @@ SP = SP + 8   // Addr of this instruction- will be saved and the code will retur
 
 ![qownnotes-media-RksbDk](media/qownnotes-media-RksbDk.png)
 
-- 
+- After **foo()** is called, it does the following:
+```C
+SP = SP - 8;            // Stack allocation for local variables
+
+R1 = SP + 6;            // get the address snink+2
+M[SP] = R1;             // store the value address to why
+
+R1 = M[SP];             // Get the address of the place where 50 needs to be writen            
+M[R1] = .2 50;           //Store the value 50
+
+SP = SP + 8;             // Deallocate the stack memory which was used for local variables
+
+RET;                    // Populats the Program counter with the value currently at SP, it would be something like this PC = M[SP] and then SP = SP - 4 
+ 
+
+```
+-  Now in the **main()**, the allocated area for arguments for preparation of the foo call   will be de allocated using ```C SP = SP + 8```.
+-  **RV** is a 4 byte value used to communicate return values between the caller and callee function.
+-  Now a question arises why the memory is allocated by two separate entities, why is there separation of responsibilities:  
+
+![qownnotes-media-TOsnYx](media/qownnotes-media-TOsnYx.png)
+- It is because the caller can put the meaning ful values in the parameters and the caller doesnt know how many local variable there are and how to manipulate them. So that is why local variables are allocated by callee function.
+-  Lets see how the following code for calculating factorial is translated into Assembly:
+```C
+int factorial(int n)
+{
+    if( n == 0)
+         return 1;
+    return n * factorial( n - 1 );
+}
+```
+```C
+R1 = M[SP + 4];        // Get the value of n
+BNE R1,0,PC + 12       // if value of n is not equal to 0 jump to PC + 12, it is 12 because we want to jump to 3rd instruction
+RV = 1;
+RET;
+R1 = M[SP + 4];        // Reloading the value of n
+R1 = R1 - 1;
+SP = SP - 4;           // Preparing the activation record for function call
+M[SP] = R1;
+CALL <facorial>
+SP = SP + 4;            // Deallocating the stack memory which was declared for parameters
+R1 = M[SP + 4];
+RV = R1 * RV;
+RET;
+ 
+```
+
+- An interesting question during the lecture is how the compiler handles return value greater than 4 bytes. Professor tells that in MIPS, it is handled using two register values(incase of double or long-long) or if it is a structure, the structure is placed somewhere in the memory and then the address is returned and it assumes that caller knows that the structure address is returning and the pointer to structure is later de refrenced.
